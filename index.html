@@ -570,7 +570,8 @@
           fText("calendrier."+i+".date", "Date, heure, lieu", row.date, {placeholder:"ex. jeudi 8h, en visio"})+
         '</div>';
       }).join("");
-      return '<fieldset><legend>Calendrier des 9 prochaines séances</legend>'+rows+'</fieldset>';
+      return '<fieldset><legend>Calendrier des 9 prochaines séances</legend>'+rows+'</fieldset>'+
+        '<a class="btn" href="assets/guide-mentorat-bni.pdf" target="_blank" rel="noopener" style="text-decoration:none; display:inline-flex;">Ouvrir le PDF du guide complet ↗</a>';
     },
     fonctionnement: function(a){
       return '<fieldset><legend>Check-list de démarrage</legend>'+
