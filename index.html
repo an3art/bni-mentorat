@@ -1,0 +1,1155 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Suivi Mentorat BNI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --paper:#faf6f2;
+    --paper-raised:#ffffff;
+    --ink:#241e1c;
+    --ink-soft:#5b534f;
+    --ink-faint:#948c88;
+    --line:#e6dcd5;
+    --line-soft:#f0e8e2;
+    --accent:#a8283f;
+    --accent-strong:#7c1e30;
+    --accent-soft:#f4e3e1;
+    --success:#2f6b4f;
+    --success-soft:#e3efe7;
+    --warning:#9c6b1f;
+    --warning-soft:#f6ecd9;
+    --focus-ring:#1c6e8c;
+    --shadow: 0 1px 2px rgba(36,30,28,.06), 0 8px 24px -12px rgba(36,30,28,.18);
+    color-scheme: light;
+  }
+  /* Thème volontairement fixé en clair : pas de variante sombre. */
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:"Fraunces", Georgia, "Times New Roman", serif;
+    font-weight:600;
+    text-wrap:balance;
+    letter-spacing:-0.01em;
+    color:var(--ink);
+  }
+  a{ color:var(--accent-strong); }
+  ::selection{ background:var(--accent-soft); }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
+  }
+
+  .app{ max-width:1180px; margin:0 auto; padding:0 20px 96px; }
+
+  /* ---------- header ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:22px 0 16px;
+    flex-wrap:wrap;
+  }
+  .brand{ display:flex; flex-direction:column; gap:2px; }
+  .brand .eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.11em; text-transform:uppercase;
+    color:var(--accent-strong);
+  }
+  .brand h1{ font-size:26px; margin:0; }
+  .brand .sub{ font-size:13px; color:var(--ink-soft); }
+
+  .tabs{ display:flex; gap:4px; background:var(--line-soft); border-radius:999px; padding:4px; }
+  .tabs button{
+    appearance:none; border:0; background:transparent; color:var(--ink-soft);
+    font:inherit; font-weight:600; font-size:13.5px; padding:9px 18px; border-radius:999px; cursor:pointer;
+  }
+  .tabs button[aria-selected="true"]{ background:var(--paper-raised); color:var(--ink); box-shadow:var(--shadow); }
+
+  .account-chip{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-soft); }
+  .account-chip strong{ color:var(--ink); font-weight:600; }
+
+  /* ---------- layout ---------- */
+  .layout{ display:grid; grid-template-columns:264px 1fr; gap:24px; align-items:start; }
+  @media (max-width: 860px){ .layout{ grid-template-columns:1fr; } }
+
+  .rail{
+    display:flex; flex-direction:column; gap:2px;
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:16px; padding:8px;
+    position:sticky; top:16px;
+  }
+  @media (max-width:860px){
+    .rail{ position:static; flex-direction:row; overflow-x:auto; gap:6px; padding:8px; scrollbar-width:thin; }
+    .rail::-webkit-scrollbar{ height:6px; }
+  }
+  .step{
+    appearance:none; border:0; background:transparent; text-align:left; cursor:pointer;
+    display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:11px; color:var(--ink);
+    font:inherit;
+  }
+  .step:hover{ background:var(--line-soft); }
+  .step[aria-current="true"]{ background:var(--accent-soft); }
+  @media (max-width:860px){ .step{ flex:0 0 auto; white-space:nowrap; } }
+  .step-num{
+    flex:0 0 auto; width:24px; height:24px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11.5px; font-weight:700; font-variant-numeric:tabular-nums;
+    background:var(--line-soft); color:var(--ink-soft);
+  }
+  .step[aria-current="true"] .step-num{ background:var(--accent); color:#fff; }
+  .step-num.done{ background:var(--success); color:#fff; }
+  .step-body{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .step-title{ font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; }
+  .step-bar{ width:100%; height:3px; border-radius:3px; background:var(--line); overflow:hidden; }
+  @media (max-width:860px){ .step-bar{ width:64px; } }
+  .step-bar > span{ display:block; height:100%; background:var(--accent); border-radius:3px; }
+
+  /* ---------- content card ---------- */
+  .card{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:20px;
+    padding:28px clamp(18px,4vw,36px); box-shadow:var(--shadow);
+  }
+  .chapter-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:4px; flex-wrap:wrap; }
+  .chapter-head .chapter-eyebrow{ font-variant-numeric:tabular-nums; color:var(--ink-faint); font-size:13px; font-weight:600; }
+  .chapter-head h2{ font-size:24px; margin:0; }
+  .chapter-intro{ color:var(--ink-soft); font-size:14.5px; max-width:62ch; margin:6px 0 22px; }
+
+  details.tip{ margin:0 0 24px; border:1px dashed var(--line); border-radius:12px; padding:2px 14px; background:var(--line-soft); }
+  details.tip summary{ cursor:pointer; font-weight:600; font-size:13px; padding:10px 0; color:var(--accent-strong); list-style:none; }
+  details.tip summary::-webkit-details-marker{ display:none; }
+  details.tip summary::before{ content:"＋ "; }
+  details.tip[open] summary::before{ content:"－ "; }
+  details.tip p, details.tip ul{ font-size:13.5px; color:var(--ink-soft); margin:0 0 12px; padding-left:18px; }
+  details.tip p{ padding-left:0; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px 20px; }
+  @media (max-width:600px){ .grid2{ grid-template-columns:1fr; } }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px 20px; }
+  @media (max-width:700px){ .grid3{ grid-template-columns:1fr; } }
+
+  fieldset{ border:0; margin:0 0 26px; padding:0; }
+  fieldset legend{ font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-faint); margin-bottom:12px; padding:0; }
+  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .field-wide{ grid-column:1 / -1; }
+  .field-label{ font-size:13px; font-weight:600; color:var(--ink-soft); }
+  .field-label .opt{ font-weight:400; color:var(--ink-faint); }
+  input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea, select{
+    font:inherit; font-size:14.5px; color:var(--ink); background:var(--paper);
+    border:1px solid var(--line); border-radius:10px; padding:10px 12px; width:100%;
+  }
+  input:focus, textarea:focus, select:focus{ border-color:var(--accent); }
+  textarea{ resize:vertical; min-height:64px; font-family:inherit; }
+  select{ cursor:pointer; }
+
+  .row-inline{ display:flex; gap:10px; align-items:end; flex-wrap:wrap; }
+  .row-inline .field{ flex:1 1 140px; margin-bottom:0; }
+
+  .check{ display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--line-soft); font-size:14px; cursor:pointer; }
+  .check:last-child{ border-bottom:0; }
+  .check input{ margin-top:3px; width:17px; height:17px; accent-color:var(--accent); flex:0 0 auto; }
+
+  .repeat-item{ border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; background:var(--paper); }
+  .repeat-item .repeat-tag{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--accent-strong); margin-bottom:8px; display:block; }
+
+  .pair-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; align-items:center; margin-bottom:10px; }
+  .pair-row .tag{ grid-column:1/-1; font-size:12px; color:var(--ink-faint); font-weight:600; }
+  @media (max-width:520px){ .pair-row{ grid-template-columns:1fr; } }
+
+  /* ---------- identity card ---------- */
+  .identity{
+    display:grid; grid-template-columns:2fr 1fr 1.4fr; gap:14px; margin-bottom:20px;
+    background:var(--accent-soft); border:1px solid var(--line); border-radius:16px; padding:16px 18px;
+  }
+  @media (max-width:700px){ .identity{ grid-template-columns:1fr; } }
+  .identity .field-label{ color:var(--accent-strong); }
+
+  /* ---------- auth (login / signup) ---------- */
+  .gate-wrap{ min-height:calc(100vh - 40px); display:flex; align-items:center; justify-content:center; padding:20px; }
+  .gate-card{
+    width:100%; max-width:400px; background:var(--paper-raised); border:1px solid var(--line); border-radius:20px;
+    padding:32px clamp(20px,5vw,36px); box-shadow:var(--shadow);
+  }
+  .gate-card .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.11em; text-transform:uppercase; color:var(--accent-strong); }
+
+  /* ---------- footer bar ---------- */
+  .savebar{
+    position:sticky; bottom:16px; margin-top:22px;
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:16px;
+    padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    box-shadow:var(--shadow);
+  }
+  .status-line{ font-size:12.5px; color:var(--ink-soft); display:flex; align-items:center; gap:8px; }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--ink-faint); flex:0 0 auto; }
+  .dot.ok{ background:var(--success); }
+  .dot.warn{ background:var(--warning); }
+  .savebar-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  button.btn{
+    font:inherit; font-weight:600; font-size:13.5px; border-radius:10px; border:1px solid var(--line);
+    background:var(--paper); color:var(--ink); padding:10px 16px; cursor:pointer;
+  }
+  button.btn:hover{ background:var(--line-soft); }
+  button.btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.btn.primary:hover{ background:var(--accent-strong); border-color:var(--accent-strong); }
+  button.btn.ghost{ background:transparent; }
+  button.btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .nav-arrows{ display:flex; justify-content:space-between; margin-top:24px; }
+
+  .banner{ border-radius:12px; padding:12px 16px; font-size:13.5px; margin-bottom:20px; display:flex; gap:10px; align-items:flex-start; }
+  .banner.warn{ background:var(--warning-soft); color:var(--ink); border:1px solid var(--warning); }
+  .banner.info{ background:var(--line-soft); color:var(--ink-soft); border:1px solid var(--line); }
+
+  /* ---------- results tab ---------- */
+  .stat-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:22px; }
+  @media (max-width:700px){ .stat-row{ grid-template-columns:1fr; } }
+  .stat-tile{ background:var(--paper-raised); border:1px solid var(--line); border-radius:16px; padding:18px 20px; box-shadow:var(--shadow); }
+  .stat-tile .num{ font-family:"Fraunces",serif; font-size:32px; font-variant-numeric:tabular-nums; line-height:1; }
+  .stat-tile .lbl{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
+
+  table.results{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  table.results th{ text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); padding:0 12px 10px; border-bottom:1px solid var(--line); }
+  table.results td{ padding:12px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+  table.results tr:last-child td{ border-bottom:0; }
+  .table-wrap{ overflow-x:auto; }
+  .pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; background:var(--line-soft); color:var(--ink-soft); }
+  .pill.role-Mentor{ background:var(--accent-soft); color:var(--accent-strong); }
+  .pill.role-Mentoré{ background:var(--success-soft); color:var(--success); }
+  .detail-row td{ background:var(--paper); }
+  .detail-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; }
+  .detail-block{ background:var(--paper-raised); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+  .detail-block h4{ margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--accent-strong); font-family:"Public Sans",sans-serif; font-weight:700; }
+  .detail-block dl{ margin:0; font-size:12.5px; }
+  .detail-block dt{ color:var(--ink-faint); margin-top:6px; }
+  .detail-block dd{ margin:0 0 2px; color:var(--ink); }
+  .empty-state{ text-align:center; padding:56px 20px; color:var(--ink-soft); }
+  .empty-state .big{ font-size:34px; margin-bottom:6px; }
+
+  .toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:var(--paper); padding:11px 18px; border-radius:10px; font-size:13.5px;
+    opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease; z-index:80; max-width:90vw; text-align:center;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .footnote{ margin-top:30px; font-size:12px; color:var(--ink-faint); text-align:center; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ Supabase ============ */
+  var SUPABASE_URL = "https://fsghltxmfdougwbfjwqj.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_SvH_MAC79v2UfDVo3NOAFw_XgaEC8ao";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  /* ============ constants & schema ============ */
+  var BIENVENUE_SUJETS = ["Bienvenue","Fonctionnement du Groupe","Stratégie","Attitude","Conférence","Infomerciales","Tête-à-tête","Recommandations","Invitations"];
+
+  var CHAPTERS = [
+    {key:"bienvenue", num:1, title:"Bienvenue", intro:"Cale dès maintenant tes 9 prochaines séances de mentorat, à raison d'une par semaine, 45 minutes chacune.",
+      tips:["Choisis l'ordre qui correspond à ton actualité — il n'y a pas d'ordre imposé.","Priorité conseillée : Fonctionnement du Groupe, puis Attitude, puis Stratégie.","Termine toujours par le Bilan."]},
+    {key:"fonctionnement", num:2, title:"Fonctionnement du Groupe", intro:"Fais le point sur les outils numériques et les bons réflexes de fonctionnement du Groupe.",
+      tips:["Un outil sans utilisateur n'a aucun effet : engage-toi à t'en servir vraiment.","Ta présence est un signal de confiance pour les autres Membres."]},
+    {key:"strategie", num:3, title:"Stratégie", intro:"Le mentorat est un outil de développement d'entreprise à part entière — fixe des objectifs clairs, chiffrés et qualitatifs.",
+      tips:["Partage ces objectifs avec ton mentor : ils doivent rester précis et mesurables.","Prévois un point sur ton retour BNI dans 4 mois."]},
+    {key:"attitude", num:4, title:"Attitude", intro:"Ta présence et ta régularité sont ta meilleure carte de visite. Prévois tes créneaux et tes suppléants à l'avance.",
+      tips:["Le suppléant est ton remplaçant choisi en cas d'impossibilité — garde-lui l'exclusivité de ta présence.","Dis merci : la saisie du MPB (Merci Pour le Business) fait avancer la recommandation."]},
+    {key:"conference", num:5, title:"Conférence", intro:"Prépare une conférence en 5 slides, centrée sur ce dont tu as besoin — pas sur ton CV ni la présentation générale de ton entreprise.",
+      tips:["Le piège : parler de sa vie ou de son entreprise en général. Ça ne permet pas de te recommander.","La solution : être précis sur qui, pour quel besoin, et quelle recommandation cela permettrait."]},
+    {key:"infomerciales", num:6, title:"Infomerciales", intro:"Une infomerciale par semaine : un sujet précis, un visuel, une demande claire — la répétition est la clé de la recommandation.",
+      tips:["1 sujet, 1 visuel (un mot, une phrase, une image), 1 demande spécifique.","Si un co-Membre peut faire la mise en relation, dis-le lui en fin de réunion."]},
+    {key:"teteatete", num:7, title:"Tête-à-tête", intro:"Planifie tes rencontres individuelles avec chaque co-Membre sur les 6 prochains mois.",
+      tips:["1h répartie entre les deux personnes, chronométrée.","Conclue systématiquement sur la recherche d'une recommandation.","Ce n'est ni une bière, ni un rendez-vous de vente : c'est un rendez-vous de travail."]},
+    {key:"recommandations", num:8, title:"Recommandations", intro:"Donner des recommandations est la meilleure façon d'en recevoir. Prépare tes 4 prochaines.",
+      tips:["Une recommandation existe dès lors que ton interlocuteur a intérêt à ce que ton co-Membre l'appelle.","Ce n'est ni une simple information, ni une vente forcée.",
+        "Erreur n°1 — Présenter son activité au lieu de son client idéal : n'explique pas seulement ce que tu fais, explique à qui tu peux apporter de la valeur.",
+        "Erreur n°2 — Faire une demande trop vague : « je cherche tous types de clients » n'aide personne, sois précis (secteur, poste, besoin ou entreprise cible).",
+        "Erreur n°3 — Ne pas faire assez de Tête-à-tête : les recommandations naissent de la confiance, planifie-les régulièrement pour mieux te faire connaître."]},
+    {key:"invitations", num:9, title:"Invitations", intro:"Une invitation par mois minimum : identifie ton frein principal et tes prochains visiteurs.",
+      tips:["L'invitation n'est pas un recrutement : c'est un cadeau pour le Groupe, pour toi et pour l'invité.","Un message la veille de la réunion sécurise la présence du visiteur."]},
+    {key:"bilan", num:10, title:"Bilan", intro:"Fais le point avec ton mentor sur tes réussites et ce qui mérite encore d'être accompagné.",
+      tips:["Rendez-vous conseillé dans 4 mois pour une première analyse de ton expérience BNI."]}
+  ];
+
+  var KEY_PATHS = {
+    bienvenue: range(9).map(function(i){return "calendrier."+i+".date";}),
+    fonctionnement: ["installApps","profilComplet","profilPublic","engagementSaisie","alertePrepJour","inscriptionEvenement"],
+    strategie: ["ca","misesEnRelation","qualCible","qualOffre","qualReseau","qualPartenaires","recosParMois","tatParMois","visiteursParMandat","coMembre1","coMembre2"],
+    attitude: ["heureBNI","reunionJour","reunionDebut","reunionFin"].concat(range(3).map(function(i){return "suppleants."+i+".nom";})),
+    conference: ["jeSuis","sujet","slide1","distinction","slide2","exempleClient","slide3","scriptVois","scriptAborde","scriptArguments","slide4","demandeRencontrer","demandePrescripteurs","demandeClients"],
+    infomerciales: ["derniersClients","recoDejaRecue","listePereNoel","sujet"].concat(range(4).reduce(function(a,i){return a.concat(["slides."+i+".sujet","slides."+i+".demande"]);},[])),
+    teteatete: range(4).reduce(function(a,i){return a.concat(["sphereWeeks."+i+".a","sphereWeeks."+i+".b"]);},[])
+      .concat(range(4).map(function(i){return "soloWeeks."+i;}))
+      .concat(range(4).reduce(function(a,i){return a.concat(["moisPairs."+i+".a","moisPairs."+i+".b"]);},[])),
+    recommandations: range(4).map(function(i){return "prochaines."+i;}).concat(["alerteJour"]),
+    invitations: ["objectif6mois","journeeInvitation","frein","commentLever","motivation"].concat(range(3).map(function(i){return "prochainsVisiteurs."+i;})),
+    bilan: range(3).map(function(i){return "succes."+i;}).concat(range(3).map(function(i){return "accompagnement."+i;})).concat(["rdvPris"])
+  };
+
+  function range(n){ var a=[]; for(var i=0;i<n;i++) a.push(i); return a; }
+
+  function emptyAnswers(){
+    return {
+      bienvenue: { calendrier: BIENVENUE_SUJETS.map(function(s){return {sujet:s, date:""};}) },
+      fonctionnement: { installApps:false, profilComplet:false, profilPublic:false, engagementSaisie:false, alertePrepJour:"", inscriptionEvenement:false, evenementChoisi:"" },
+      strategie: { ca:"", misesEnRelation:"", qualCible:false, qualOffre:false, qualReseau:false, qualPartenaires:false, recosParMois:"", tatParMois:"", visiteursParMandat:"", coMembre1:"", coMembre2:"" },
+      attitude: { heureBNI:"", reunionJour:"", reunionDebut:"", reunionFin:"", suppleants:[
+        {nom:"", delaiValeur:"", delaiUnite:"mois"}, {nom:"", delaiValeur:"", delaiUnite:"jours"}, {nom:"", delaiValeur:"", delaiUnite:"heures"}
+      ]},
+      conference: { jeSuis:"", sujet:"", slide1:"", distinction:"", slide2:"", exempleClient:"", slide3:"", scriptVois:"", scriptAborde:"", scriptArguments:"", slide4:"", demandeRencontrer:"", demandePrescripteurs:"", demandeClients:"", decoration:"", visiteurs:"", invites:"", interactions:"" },
+      infomerciales: { derniersClients:"", recoDejaRecue:"", listePereNoel:"", sujet:"", slides:[
+        {label:"Besoin exprimé", sujet:"", demande:"", dire:""},
+        {label:"Bénéfice client", sujet:"", demande:"", dire:""},
+        {label:"Exemple client concret", sujet:"", demande:"", dire:""},
+        {label:"Prix et déroulé", sujet:"", demande:"", dire:""}
+      ]},
+      teteatete: {
+        sphereWeeks:[0,1,2,3].map(function(){return {a:"", b:""};}),
+        soloWeeks:["","","",""],
+        moisPairs:[0,1,2,3].map(function(){return {a:"", b:""};})
+      },
+      recommandations: { prochaines:["","","",""], alerteJour:"", alerteHeure:"" },
+      invitations: { objectif6mois:"", journeeInvitation:"", frein:"", commentLever:"", motivation:"", prochainsVisiteurs:["","",""] },
+      bilan: { succes:["","",""], accompagnement:["","",""], rdvPris:false, prochainRdvDate:"" }
+    };
+  }
+
+  function mergeDefaults(def, incoming){
+    if(incoming == null) return def;
+    if(Array.isArray(def)){
+      if(!Array.isArray(incoming)) return def;
+      return def.map(function(d,i){ return mergeDefaults(d, incoming[i]); });
+    }
+    if(def && typeof def === "object"){
+      if(!incoming || typeof incoming !== "object") return def;
+      var out = {};
+      Object.keys(def).forEach(function(k){ out[k] = mergeDefaults(def[k], incoming[k]); });
+      return out;
+    }
+    return incoming === undefined ? def : incoming;
+  }
+
+  /* ============ path helpers ============ */
+  function getPath(obj, path){
+    return path.split(".").reduce(function(o,k){ return (o==null) ? undefined : o[k]; }, obj);
+  }
+  function setPath(obj, path, val){
+    var keys = path.split(".");
+    var cur = obj;
+    for(var i=0;i<keys.length-1;i++){
+      var k = keys[i];
+      if(cur[k]==null){ cur[k] = /^\d+$/.test(keys[i+1]) ? [] : {}; }
+      cur = cur[k];
+    }
+    cur[keys[keys.length-1]] = val;
+  }
+  function isFilled(v){ return (typeof v === "boolean") ? v===true : String(v==null?"":v).trim().length>0; }
+
+  function chapterProgress(key, answers){
+    var paths = KEY_PATHS[key] || [];
+    if(!paths.length) return {filled:0, total:0};
+    var filled = 0;
+    for(var i=0;i<paths.length;i++){ if(isFilled(getPath(answers[key], paths[i]))) filled++; }
+    return {filled:filled, total:paths.length};
+  }
+  function totalProgress(answers){
+    var f=0,t=0;
+    CHAPTERS.forEach(function(c){ var p=chapterProgress(c.key, answers); f+=p.filled; t+=p.total; });
+    return {filled:f, total:t};
+  }
+
+  /* ============ escaping ============ */
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  /* ============ toast ============ */
+  var toastTimer = null;
+  function toast(msg){
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 3600);
+  }
+
+  /* ============ app state ============ */
+  var session = null;
+  var profile = null;          // {id, nom, role, groupe}
+  var answers = emptyAnswers();
+  var answersUpdatedAt = null;
+  var authMode = "login";      // "login" | "signup"
+  var resultsCache = null;     // {loading, rows}
+  var view = loadView();
+
+  function loadView(){
+    try {
+      var raw = localStorage.getItem("bni-mentorat-view-v1");
+      if(raw){ var v = JSON.parse(raw); if(v && v.tab) return v; }
+    } catch(e){}
+    return { tab:"repondre", chapter:"bienvenue" };
+  }
+  function saveView(){ try { localStorage.setItem("bni-mentorat-view-v1", JSON.stringify(view)); } catch(e){} }
+
+  var appEl = document.getElementById("app");
+
+  /* ============ text summary (copier) ============ */
+  function summaryText(nom, role, groupe, a){
+    var lines = [];
+    lines.push("BNI Mentorat — réponses de " + (nom||"—") + " (" + role + (groupe ? ", " + groupe : "") + ")");
+    lines.push("");
+    CHAPTERS.forEach(function(c){
+      lines.push("## " + c.num + ". " + c.title);
+      lines.push(chapterSummaryLines(c.key, a).join("\n"));
+      lines.push("");
+    });
+    return lines.join("\n");
+  }
+  function chapterSummaryLines(key, a0){
+    var a = a0[key];
+    var out = [];
+    function line(label, val){ if(isFilled(val)) out.push("- " + label + " : " + val); }
+    function lineBool(label, val){ out.push("- " + label + " : " + (val ? "oui" : "non")); }
+    switch(key){
+      case "bienvenue":
+        a.calendrier.forEach(function(row){ if(isFilled(row.date)) out.push("- " + row.sujet + " : " + row.date); });
+        break;
+      case "fonctionnement":
+        lineBool("Installation des applications", a.installApps);
+        lineBool("Profil BNI complet", a.profilComplet);
+        lineBool("Profil public", a.profilPublic);
+        lineBool("Engagement saisie contributions/TàT", a.engagementSaisie);
+        line("Alerte préparation BNI", a.alertePrepJour);
+        lineBool("Inscription à un évènement BCG", a.inscriptionEvenement);
+        line("Évènement choisi", a.evenementChoisi);
+        break;
+      case "strategie":
+        line("CA / Marge / Nouveaux clients souhaités", a.ca);
+        line("Mises en relation à recevoir", a.misesEnRelation);
+        lineBool("Connaître ma cible client", a.qualCible);
+        lineBool("Travailler mon offre", a.qualOffre);
+        lineBool("Renforcer mon réseau", a.qualReseau);
+        lineBool("Relations solides avec des partenaires", a.qualPartenaires);
+        line("Recommandations par mois à donner", a.recosParMois);
+        line("TàT par mois à organiser", a.tatParMois);
+        line("Visiteurs par mandat à convier", a.visiteursParMandat);
+        line("Co-Membre prioritaire 1", a.coMembre1);
+        line("Co-Membre prioritaire 2", a.coMembre2);
+        break;
+      case "attitude":
+        line("Heure BNI calée", a.heureBNI);
+        line("Jour de réunion", a.reunionJour);
+        line("Créneau", (a.reunionDebut||"") + (a.reunionFin ? " - " + a.reunionFin : ""));
+        a.suppleants.forEach(function(s,i){ if(isFilled(s.nom)) out.push("- Suppléant " + (i+1) + " : " + s.nom + " (à prévenir " + (s.delaiValeur||"?") + " " + s.delaiUnite + " avant)"); });
+        break;
+      case "conference":
+        line("Je suis", a.jeSuis); line("Sujet", a.sujet); line("Slide 1", a.slide1);
+        line("Ce qui me distingue", a.distinction); line("Slide 2", a.slide2);
+        line("Exemple client", a.exempleClient); line("Slide 3", a.slide3);
+        line("Ce que je vois/j'entends", a.scriptVois); line("J'aborde le sujet par", a.scriptAborde);
+        line("Arguments", a.scriptArguments); line("Slide 4", a.slide4);
+        line("Je souhaite rencontrer", a.demandeRencontrer); line("Prescripteurs/partenaires", a.demandePrescripteurs); line("Clients", a.demandeClients);
+        line("Décoration de la salle", a.decoration); line("Visiteurs souhaités", a.visiteurs); line("Invités", a.invites); line("Interactions prévues", a.interactions);
+        break;
+      case "infomerciales":
+        line("Derniers clients obtenus via", a.derniersClients);
+        line("Recommandation déjà reçue grâce à", a.recoDejaRecue);
+        line("Liste au Père Noël", a.listePereNoel);
+        line("Sujet", a.sujet);
+        a.slides.forEach(function(s){ if(isFilled(s.sujet)||isFilled(s.demande)) out.push("- [" + s.label + "] sujet: " + (s.sujet||"—") + " / demande: " + (s.demande||"—")); });
+        break;
+      case "teteatete":
+        a.sphereWeeks.forEach(function(w,i){ if(isFilled(w.a)||isFilled(w.b)) out.push("- Semaine " + (i+1) + " : " + w.a + " & " + w.b); });
+        a.soloWeeks.forEach(function(w,i){ if(isFilled(w)) out.push("- Semaine " + (i+5) + " : " + w); });
+        a.moisPairs.forEach(function(w,i){ if(isFilled(w.a)||isFilled(w.b)) out.push("- Mois " + (i+3) + " : " + w.a + " & " + w.b); });
+        break;
+      case "recommandations":
+        a.prochaines.forEach(function(p,i){ if(isFilled(p)) out.push("- Recommandation " + (i+1) + " : " + p); });
+        line("Alerte jour", a.alerteJour); line("Alerte heure", a.alerteHeure);
+        break;
+      case "invitations":
+        line("Objectif visiteurs / 6 mois", a.objectif6mois);
+        line("Journée d'invitation", a.journeeInvitation);
+        line("Frein principal", a.frein); line("Comment le lever", a.commentLever); line("Motivation", a.motivation);
+        a.prochainsVisiteurs.forEach(function(v,i){ if(isFilled(v)) out.push("- Prochain visiteur " + (i+1) + " : " + v); });
+        break;
+      case "bilan":
+        a.succes.forEach(function(s,i){ if(isFilled(s)) out.push("- Réussite " + (i+1) + " : " + s); });
+        a.accompagnement.forEach(function(s,i){ if(isFilled(s)) out.push("- À accompagner " + (i+1) + " : " + s); });
+        lineBool("RDV de bilan pris", a.rdvPris); line("Date prévue", a.prochainRdvDate);
+        break;
+    }
+    return out.length ? out : ["- (pas encore rempli)"];
+  }
+  async function copySummary(){
+    var text = summaryText(profile.nom, profile.role, profile.groupe, answers);
+    try { await navigator.clipboard.writeText(text); toast("Réponses copiées dans le presse-papiers."); }
+    catch(e){ toast("Impossible de copier automatiquement — sélectionne le texte manuellement."); }
+  }
+
+  /* ============ CSV export ============ */
+  function flatten(obj, prefix){
+    var out = {};
+    if(Array.isArray(obj)){
+      obj.forEach(function(v,i){ Object.assign(out, flatten(v, prefix ? prefix+"."+i : String(i))); });
+    } else if(obj && typeof obj === "object"){
+      Object.keys(obj).forEach(function(k){ Object.assign(out, flatten(obj[k], prefix ? prefix+"."+k : k)); });
+    } else {
+      out[prefix] = obj;
+    }
+    return out;
+  }
+  function toCSV(rows){
+    var flatRows = rows.map(function(r){
+      return Object.assign({nom:r.nom, role:r.role, groupe:r.groupe, mis_a_jour:r.updatedAt}, flatten(r.answers, ""));
+    });
+    var colSet = {};
+    flatRows.forEach(function(row){ Object.keys(row).forEach(function(k){ colSet[k]=true; }); });
+    var cols = Object.keys(colSet);
+    function esc1(v){ var s = String(v==null?"":v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+    var lines = [cols.join(",")];
+    flatRows.forEach(function(row){ lines.push(cols.map(function(c){ return esc1(row[c]); }).join(",")); });
+    return lines.join("\r\n");
+  }
+  function downloadCSV(){
+    var csv = toCSV(resultsCache.rows);
+    var blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "bni-mentorat-reponses.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    toast("Export téléchargé.");
+  }
+
+  /* ============ field builders ============ */
+  function fText(path, label, value, opt){
+    opt = opt || {};
+    var wide = opt.wide ? " field-wide" : "";
+    var ph = opt.placeholder ? ' placeholder="'+esc(opt.placeholder)+'"' : "";
+    return '<label class="field'+wide+'"><span class="field-label">'+esc(label)+(opt.opt?' <span class="opt">(optionnel)</span>':'')+'</span>'+
+      '<input type="text" data-path="'+path+'" value="'+esc(value)+'"'+ph+'></label>';
+  }
+  function fArea(path, label, value, opt){
+    opt = opt || {};
+    return '<label class="field field-wide"><span class="field-label">'+esc(label)+'</span>'+
+      '<textarea data-path="'+path+'" rows="'+(opt.rows||3)+'" placeholder="'+esc(opt.placeholder||"")+'">'+esc(value)+'</textarea></label>';
+  }
+  function fCheck(path, label, checked){
+    return '<label class="check"><input type="checkbox" data-path="'+path+'" data-kind="bool" '+(checked?"checked":"")+'><span>'+esc(label)+'</span></label>';
+  }
+  function fSelect(path, label, value, options){
+    var opts = options.map(function(o){ return '<option value="'+esc(o)+'" '+(o===value?"selected":"")+'>'+esc(o)+'</option>'; }).join("");
+    return '<label class="field"><span class="field-label">'+esc(label)+'</span><select data-path="'+path+'">'+opts+'</select></label>';
+  }
+
+  /* ============ chapter renderers ============ */
+  var RENDERERS = {
+    bienvenue: function(a){
+      var rows = a.calendrier.map(function(row,i){
+        return '<div class="row-inline">'+
+          '<div class="field" style="flex:0 0 210px"><span class="field-label">'+esc(row.sujet)+'</span></div>'+
+          fText("calendrier."+i+".date", "Date, heure, lieu", row.date, {placeholder:"ex. jeudi 8h, en visio"})+
+        '</div>';
+      }).join("");
+      return '<fieldset><legend>Calendrier des 9 prochaines séances</legend>'+rows+'</fieldset>';
+    },
+    fonctionnement: function(a){
+      return '<fieldset><legend>Check-list de démarrage</legend>'+
+        fCheck("installApps","Faire le point sur l'installation de chaque application", a.installApps)+
+        fCheck("profilComplet","Remplir mon profil BNI (photo, descriptif)", a.profilComplet)+
+        fCheck("profilPublic","Mettre mon profil BNI « public »", a.profilPublic)+
+        fCheck("engagementSaisie","M'engager à saisir mes contributions et Tête-à-tête avant chaque réunion", a.engagementSaisie)+
+        '</fieldset>'+
+        '<fieldset><legend>Organisation</legend><div class="grid2">'+
+        fText("alertePrepJour","Alerte « Préparation BNI » dans mon agenda, chaque…", a.alertePrepJour, {placeholder:"ex. lundi"})+
+        '</div>'+
+        fCheck("inscriptionEvenement","M'inscrire à un prochain évènement sur BCG (PRM-I ou 60 minutes chrono)", a.inscriptionEvenement)+
+        fText("evenementChoisi","J'ai choisi…", a.evenementChoisi, {wide:true})+
+        '</fieldset>';
+    },
+    strategie: function(a){
+      return '<fieldset><legend>Mes objectifs quantitatifs</legend><div class="grid2">'+
+        fText("ca","CA / marge / nouveaux clients souhaités", a.ca)+
+        fText("misesEnRelation","Mises en relation à recevoir", a.misesEnRelation)+
+        '</div></fieldset>'+
+        '<fieldset><legend>Mes objectifs qualitatifs</legend>'+
+        fCheck("qualCible","Connaître ma cible client", a.qualCible)+
+        fCheck("qualOffre","Travailler mon offre", a.qualOffre)+
+        fCheck("qualReseau","Renforcer mon réseau", a.qualReseau)+
+        fCheck("qualPartenaires","Établir des relations solides avec des partenaires", a.qualPartenaires)+
+        '</fieldset>'+
+        '<fieldset><legend>Mes moyens</legend><div class="grid3">'+
+        fText("recosParMois","Recommandations par mois à donner", a.recosParMois)+
+        fText("tatParMois","TàT par mois à organiser", a.tatParMois)+
+        fText("visiteursParMandat","Visiteurs par mandat à convier", a.visiteursParMandat)+
+        '</div></fieldset>'+
+        '<fieldset><legend>Plan d’action — mes 2 prochains co-Membres à rencontrer en priorité</legend><div class="grid2">'+
+        fText("coMembre1","Co-Membre 1", a.coMembre1)+
+        fText("coMembre2","Co-Membre 2", a.coMembre2)+
+        '</div></fieldset>';
+    },
+    attitude: function(a){
+      var supp = a.suppleants.map(function(s,i){
+        return '<div class="repeat-item"><span class="repeat-tag">Suppléant '+(i+1)+'</span><div class="grid2">'+
+          fText("suppleants."+i+".nom","Nom", s.nom)+
+          '<div class="row-inline">'+
+            fText("suppleants."+i+".delaiValeur","À prévenir", s.delaiValeur, {placeholder:"nombre"})+
+            fSelect("suppleants."+i+".delaiUnite","Unité", s.delaiUnite, ["mois","jours","heures"])+
+          '</div>'+
+        '</div></div>';
+      }).join("");
+      return '<fieldset><legend>Mon heure BNI</legend><div class="grid2">'+
+        fText("heureBNI","Ma préparation (recommandations, suivi) est calée chaque semaine…", a.heureBNI, {wide:true})+
+        '</div>'+
+        '<div class="row-inline">'+
+          fText("reunionJour","Jour de réunion (bloqué à l'agenda)", a.reunionJour)+
+          fText("reunionDebut","De", a.reunionDebut, {placeholder:"8h00"})+
+          fText("reunionFin","À", a.reunionFin, {placeholder:"10h30"})+
+        '</div></fieldset>'+
+        '<fieldset><legend>Mes 3 suppléants</legend>'+supp+'</fieldset>';
+    },
+    conference: function(a){
+      return '<fieldset><legend>Qui je suis</legend><div class="grid2">'+
+        fText("jeSuis","Je suis", a.jeSuis)+
+        fText("sujet","Mon sujet de conférence sera", a.sujet)+
+        '</div>'+fText("slide1","Sur ma slide, je choisis (un mot, une phrase, une image)", a.slide1, {wide:true})+'</fieldset>'+
+        '<fieldset><legend>Ce qui me distingue</legend>'+
+        fArea("distinction","Ce qui me distingue de mes confrères, c’est", a.distinction)+
+        fText("slide2","Sur ma slide, je choisis", a.slide2, {wide:true})+'</fieldset>'+
+        '<fieldset><legend>Exemple client</legend>'+
+        fArea("exempleClient","L’exemple client (besoin, action, bénéfice)", a.exempleClient)+
+        fText("slide3","Sur ma slide, je choisis", a.slide3, {wide:true})+'</fieldset>'+
+        '<fieldset><legend>Le script de la recommandation</legend>'+
+        fArea("scriptVois","1. Ce que je vois ou ce que j’entends", a.scriptVois, {rows:2})+
+        fText("scriptAborde","2. J’aborde le sujet par", a.scriptAborde)+
+        fArea("scriptArguments","3. J’avance 1 à 3 arguments pour obtenir le droit d’appeler", a.scriptArguments, {rows:2})+
+        fText("slide4","Sur ma slide, je choisis", a.slide4, {wide:true})+'</fieldset>'+
+        '<fieldset><legend>Ma demande</legend><div class="grid2">'+
+        fText("demandeRencontrer","Je souhaite rencontrer", a.demandeRencontrer)+
+        fText("demandePrescripteurs","Mes prescripteurs et partenaires sont", a.demandePrescripteurs)+
+        fText("demandeClients","Mes clients sont", a.demandeClients)+
+        '</div></fieldset>'+
+        '<fieldset><legend>Logistique &amp; bonus</legend><div class="grid2">'+
+        fText("decoration","Décoration de la salle", a.decoration)+
+        fText("visiteurs","Visiteurs souhaités", a.visiteurs)+
+        fText("invites","Invités « à moi »", a.invites)+
+        fText("interactions","2 interactions avec le public", a.interactions, {opt:true})+
+        '</div></fieldset>';
+    },
+    infomerciales: function(a){
+      var slides = a.slides.map(function(s,i){
+        return '<div class="repeat-item"><span class="repeat-tag">'+esc(s.label)+'</span>'+
+          fText("slides."+i+".sujet","Sujet", s.sujet)+
+          fText("slides."+i+".demande","Demande spécifique", s.demande)+
+          fArea("slides."+i+".dire","Ce que je vais dire", s.dire, {rows:2})+
+        '</div>';
+      }).join("");
+      return '<fieldset><legend>Ma base de sujets</legend>'+
+        fArea("derniersClients","Comment j’ai obtenu mes derniers clients ?", a.derniersClients, {rows:2})+
+        fText("recoDejaRecue","Ai-je déjà reçu une recommandation ? Grâce à qui / quoi ?", a.recoDejaRecue)+
+        fArea("listePereNoel","Ma liste au Père Noël (prospects souhaités)", a.listePereNoel, {rows:2})+
+        fText("sujet","1 sujet", a.sujet)+
+        '</fieldset>'+
+        '<fieldset><legend>Mes 4 déclinaisons</legend>'+slides+'</fieldset>';
+    },
+    teteatete: function(a){
+      var sphere = a.sphereWeeks.map(function(w,i){
+        return '<div class="pair-row"><span class="tag">Semaine '+(i+1)+'</span>'+
+          fText("sphereWeeks."+i+".a","Co-Membre A", w.a)+fText("sphereWeeks."+i+".b","Co-Membre B", w.b)+'</div>';
+      }).join("");
+      var solo = a.soloWeeks.map(function(w,i){
+        return fText("soloWeeks."+i, "Semaine "+(i+5), w);
+      }).join("");
+      var mois = a.moisPairs.map(function(w,i){
+        return '<div class="pair-row"><span class="tag">Mois '+(i+3)+'</span>'+
+          fText("moisPairs."+i+".a","Co-Membre A", w.a)+fText("moisPairs."+i+".b","Co-Membre B", w.b)+'</div>';
+      }).join("");
+      return '<fieldset><legend>D’abord la sphère — 2 par semaine</legend>'+sphere+'</fieldset>'+
+        '<fieldset><legend>Puis 1 par semaine</legend><div class="grid2">'+solo+'</div></fieldset>'+
+        '<fieldset><legend>Et ensuite, 2 par mois minimum</legend>'+mois+'</fieldset>';
+    },
+    recommandations: function(a){
+      var rows = a.prochaines.map(function(p,i){ return fText("prochaines."+i, "Recommandation "+(i+1), p, {wide:true}); }).join("");
+      return '<fieldset><legend>Mes 4 prochaines recommandations</legend>'+rows+'</fieldset>'+
+        '<fieldset><legend>Alerte agenda « J’ai pas de reco »</legend><div class="row-inline">'+
+        fText("alerteJour","Jour", a.alerteJour)+fText("alerteHeure","Heure", a.alerteHeure)+'</div></fieldset>';
+    },
+    invitations: function(a){
+      var rows = a.prochainsVisiteurs.map(function(v,i){ return fText("prochainsVisiteurs."+i, "Prochain visiteur "+(i+1), v); }).join("");
+      return '<fieldset><legend>Mon objectif</legend><div class="grid2">'+
+        fText("objectif6mois","Objectif de visiteurs sur les 6 prochains mois", a.objectif6mois)+
+        fText("journeeInvitation","Ma journée d’invitation sera", a.journeeInvitation)+
+        '</div></fieldset>'+
+        '<fieldset><legend>Mon frein &amp; ma motivation</legend><div class="grid2">'+
+        fText("frein","Mon frein à inviter est", a.frein)+
+        fText("commentLever","Comment le lever ?", a.commentLever)+
+        fText("motivation","Ma motivation à inviter est", a.motivation, {wide:true})+
+        '</div></fieldset>'+
+        '<fieldset><legend>Mes 3 prochains visiteurs</legend><div class="grid3">'+rows+'</div></fieldset>';
+    },
+    bilan: function(a){
+      var succes = a.succes.map(function(s,i){ return fText("succes."+i,"Réussite "+(i+1), s, {wide:true}); }).join("");
+      var acc = a.accompagnement.map(function(s,i){ return fText("accompagnement."+i,"À accompagner "+(i+1), s, {wide:true}); }).join("");
+      return '<fieldset><legend>3 éléments de réussite sur ces 10 premières semaines</legend>'+succes+'</fieldset>'+
+        '<fieldset><legend>3 points qui nécessitent d’être accompagné(e)</legend>'+acc+'</fieldset>'+
+        '<fieldset><legend>Prochaine étape</legend>'+
+        fCheck("rdvPris","Rendez-vous de bilan pris avec mon mentor (dans 4 mois)", a.rdvPris)+
+        fText("prochainRdvDate","Date prévue", a.prochainRdvDate, {opt:true})+
+        '</fieldset>';
+    }
+  };
+
+  /* ============ auth ============ */
+  function translateAuthError(err){
+    var m = (err && err.message) || "";
+    if(/already registered/i.test(m)) return "Un compte existe déjà avec cet email — connecte-toi plutôt.";
+    if(/invalid login credentials/i.test(m)) return "Email ou mot de passe incorrect.";
+    if(/password/i.test(m) && /(6|least)/i.test(m)) return "Le mot de passe doit faire au moins 6 caractères.";
+    if(/rate limit/i.test(m)) return "Trop de tentatives — patiente une minute puis réessaie.";
+    return m || "Une erreur est survenue, réessaie.";
+  }
+
+  function renderAuthPage(errorMsg, infoMsg){
+    var isSignup = authMode === "signup";
+    return '<div class="gate-wrap"><div class="gate-card">'+
+      '<span class="eyebrow">Guide de Mentorat BNI</span>'+
+      '<h1 style="margin:6px 0 4px">Suivi interactif</h1>'+
+      '<p class="chapter-intro" style="margin:0 0 18px">'+(isSignup ? "Crée ton compte pour commencer les exercices." : "Connecte-toi pour retrouver tes réponses.")+'</p>'+
+      (errorMsg ? '<div class="banner warn">'+esc(errorMsg)+'</div>' : '')+
+      (infoMsg ? '<div class="banner info">'+esc(infoMsg)+'</div>' : '')+
+      '<form id="auth-form" autocomplete="on">'+
+        '<label class="field"><span class="field-label">Email</span><input type="email" id="auth-email" required placeholder="prenom@exemple.com"></label>'+
+        '<label class="field"><span class="field-label">Mot de passe</span><input type="password" id="auth-password" required minlength="6" placeholder="6 caractères minimum" autocomplete="'+(isSignup?"new-password":"current-password")+'"></label>'+
+        '<button class="btn primary" type="submit" style="width:100%; margin-top:6px">'+(isSignup?"Créer mon compte":"Se connecter")+'</button>'+
+      '</form>'+
+      '<p style="text-align:center; font-size:13px; margin-top:16px; color:var(--ink-soft)">'+
+        (isSignup ? 'Déjà un compte ? <a href="#" id="switch-mode">Se connecter</a>' : 'Pas encore de compte ? <a href="#" id="switch-mode">En créer un</a>')+
+      '</p>'+
+    '</div></div>';
+  }
+
+  function bindAuthEvents(){
+    var switchLink = document.getElementById("switch-mode");
+    if(switchLink){
+      switchLink.addEventListener("click", function(e){ e.preventDefault(); authMode = authMode === "login" ? "signup" : "login"; renderApp(); });
+    }
+    var form = document.getElementById("auth-form");
+    if(form){
+      form.addEventListener("submit", async function(e){
+        e.preventDefault();
+        var email = document.getElementById("auth-email").value.trim();
+        var password = document.getElementById("auth-password").value;
+        var btn = form.querySelector("button[type=submit]");
+        if(btn){ btn.disabled = true; btn.textContent = "Un instant…"; }
+        try {
+          if(authMode === "signup"){
+            var res = await sb.auth.signUp({ email: email, password: password });
+            if(res.error) throw res.error;
+            if(!res.data.session){
+              authMode = "login";
+              appEl.innerHTML = renderAuthPage(null, "Compte créé — vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi.");
+              bindAuthEvents();
+              return;
+            }
+          } else {
+            var res2 = await sb.auth.signInWithPassword({ email: email, password: password });
+            if(res2.error) throw res2.error;
+          }
+          // succès : onAuthStateChange prend le relais et recharge l'app
+        } catch(err){
+          appEl.innerHTML = renderAuthPage(translateAuthError(err));
+          bindAuthEvents();
+        }
+      });
+    }
+  }
+
+  async function handleLogout(){
+    await sb.auth.signOut();
+  }
+
+  /* ============ data load / save ============ */
+  async function loadUserData(){
+    var uid = session.user.id;
+    var profRes = await sb.from("profiles").select("*").eq("id", uid).maybeSingle();
+    var p = profRes.data;
+    profile = p || { id: uid, nom:"", role:"Mentoré", groupe:"BNI Vacoas" };
+    var ansRes = await sb.from("mentee_answers").select("answers, updated_at").eq("user_id", uid).maybeSingle();
+    answers = mergeDefaults(emptyAnswers(), ansRes.data && ansRes.data.answers);
+    answersUpdatedAt = ansRes.data ? ansRes.data.updated_at : null;
+  }
+
+  function validateIdentity(){
+    return profile.nom && profile.nom.trim().length >= 2;
+  }
+
+  async function handleSave(){
+    if(!validateIdentity()){
+      toast("Indique ton nom avant d'enregistrer.");
+      var nomInput = document.querySelector('[data-identity="nom"]');
+      if(nomInput) nomInput.focus();
+      return;
+    }
+    var saveBtn = document.getElementById("save-btn");
+    if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = "Enregistrement…"; }
+    try {
+      var uid = session.user.id;
+      var nowIso = new Date().toISOString();
+      var r1 = await sb.from("profiles").upsert({ id: uid, nom: profile.nom.trim(), role: profile.role, groupe: (profile.groupe||"").trim(), updated_at: nowIso });
+      if(r1.error) throw r1.error;
+      var r2 = await sb.from("mentee_answers").upsert({ user_id: uid, answers: answers, updated_at: nowIso });
+      if(r2.error) throw r2.error;
+      answersUpdatedAt = nowIso;
+      toast("Réponses enregistrées.");
+    } catch(err){
+      toast("Échec de l'enregistrement (" + (err && err.message ? err.message : "erreur") + "). Réessaie.");
+    } finally {
+      if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = "Enregistrer mes réponses"; }
+      updateStatusLine();
+    }
+  }
+
+  function resetAnswers(){
+    answers = emptyAnswers();
+    renderApp();
+    toast("Formulaire réinitialisé — pense à cliquer sur « Enregistrer » si tu veux valider ce changement.");
+  }
+
+  async function fetchResults(){
+    var profsRes = await sb.from("profiles").select("id, nom, role, groupe, updated_at");
+    var ansRes = await sb.from("mentee_answers").select("user_id, answers, updated_at");
+    var histRes = await sb.from("mentee_history").select("user_id, answers, saved_at").order("saved_at", {ascending:true});
+    var profs = profsRes.data || [];
+    var answersByUser = {};
+    (ansRes.data||[]).forEach(function(r){ answersByUser[r.user_id] = r; });
+    var histByUser = {};
+    (histRes.data||[]).forEach(function(r){ (histByUser[r.user_id] = histByUser[r.user_id]||[]).push(r); });
+    return profs.filter(function(p){ return isFilled(p.nom); }).map(function(p){
+      var ansRow = answersByUser[p.id];
+      return {
+        id: p.id, nom: p.nom, role: p.role, groupe: p.groupe,
+        answers: mergeDefaults(emptyAnswers(), ansRow && ansRow.answers),
+        updatedAt: ansRow ? ansRow.updated_at : p.updated_at,
+        history: (histByUser[p.id]||[]).map(function(h){ return { updatedAt: h.saved_at, answers: mergeDefaults(emptyAnswers(), h.answers) }; })
+      };
+    });
+  }
+
+  async function showResultsTab(){
+    view.tab = "resultats"; saveView();
+    resultsCache = { loading:true, rows:[] };
+    renderApp();
+    try {
+      var rows = await fetchResults();
+      resultsCache = { loading:false, rows:rows };
+    } catch(err){
+      resultsCache = { loading:false, rows:[], error: (err && err.message) || "Erreur de chargement" };
+    }
+    renderApp();
+  }
+
+  /* ============ app rendering ============ */
+  function renderApp(){
+    if(!session){ appEl.innerHTML = renderAuthPage(); bindAuthEvents(); return; }
+    if(view.tab === "resultats"){ appEl.innerHTML = renderResultatsPage(); bindResultsEvents(); }
+    else { appEl.innerHTML = renderRepondrePage(); bindRepondreEvents(); }
+  }
+
+  function renderHeader(){
+    var email = session && session.user ? session.user.email : "";
+    return '<div class="topbar">'+
+      '<div class="brand"><span class="eyebrow">Guide de Mentorat BNI</span><h1>Suivi interactif</h1>'+
+      '<span class="sub">Réponds aux exercices du guide, chapitre par chapitre — sans imprimer le PDF.</span></div>'+
+      '<div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">'+
+      '<div class="tabs" role="tablist">'+
+        '<button role="tab" aria-selected="'+(view.tab==="repondre")+'" data-tab="repondre">Répondre</button>'+
+        '<button role="tab" aria-selected="'+(view.tab==="resultats")+'" data-tab="resultats">Résultats</button>'+
+      '</div>'+
+      '<div class="account-chip"><strong>'+esc(email)+'</strong><button class="btn ghost" id="logout-btn" type="button">Se déconnecter</button></div>'+
+      '</div></div>';
+  }
+
+  function renderRepondrePage(){
+    var chap = CHAPTERS.filter(function(c){ return c.key===view.chapter; })[0] || CHAPTERS[0];
+    var tp = totalProgress(answers);
+    var idx = CHAPTERS.indexOf(chap);
+    var prev = CHAPTERS[idx-1], next = CHAPTERS[idx+1];
+
+    var rail = CHAPTERS.map(function(c){
+      var p = chapterProgress(c.key, answers);
+      var pct = p.total ? Math.round(100*p.filled/p.total) : 0;
+      var done = p.total && p.filled === p.total;
+      return '<button class="step" data-step="'+c.key+'" aria-current="'+(c.key===chap.key)+'">'+
+        '<span class="step-num'+(done?" done":"")+'">'+(done?"✓":c.num)+'</span>'+
+        '<span class="step-body"><span class="step-title">'+esc(c.title)+'</span>'+
+        '<span class="step-bar"><span style="width:'+pct+'%"></span></span></span></button>';
+    }).join("");
+
+    var tipsList = chap.tips.map(function(t){ return "<li>"+esc(t)+"</li>"; }).join("");
+
+    return renderHeader() +
+      '<div class="layout">'+
+        '<nav class="rail" aria-label="Chapitres">'+rail+'</nav>'+
+        '<div>'+
+          '<div class="card">'+
+            '<div class="identity">'+
+              '<label class="field"><span class="field-label">Ton nom</span><input type="text" data-identity="nom" value="'+esc(profile.nom)+'" placeholder="Prénom Nom"></label>'+
+              '<label class="field"><span class="field-label">Rôle</span><select data-identity="role">'+
+                ["Mentor","Mentoré","Ambassadeur","Autre"].map(function(r){ return '<option '+(r===profile.role?"selected":"")+'>'+r+'</option>'; }).join("")+
+              '</select></label>'+
+              '<label class="field"><span class="field-label">Groupe BNI</span><input type="text" data-identity="groupe" value="'+esc(profile.groupe)+'" placeholder="ex. BNI Vacoas"></label>'+
+            '</div>'+
+            '<div class="chapter-head"><span class="chapter-eyebrow">Chapitre '+chap.num+' / 10</span><h2>'+esc(chap.title)+'</h2></div>'+
+            '<p class="chapter-intro">'+esc(chap.intro)+'</p>'+
+            '<details class="tip"><summary>Rappels utiles</summary><ul>'+tipsList+'</ul></details>'+
+            '<form id="chapter-form" autocomplete="off">'+RENDERERS[chap.key](answers[chap.key])+'</form>'+
+            '<div class="nav-arrows">'+
+              (prev ? '<button class="btn" data-nav="'+prev.key+'">← '+esc(prev.title)+'</button>' : '<span></span>')+
+              (next ? '<button class="btn" data-nav="'+next.key+'">'+esc(next.title)+' →</button>' : '<span></span>')+
+            '</div>'+
+          '</div>'+
+          '<div class="savebar">'+
+            '<span class="status-line" id="status-line"><span class="dot '+(tp.total&&tp.filled===tp.total?"ok":"")+'"></span>'+tp.filled+' / '+tp.total+' champs clés remplis'+(answersUpdatedAt ? ' · dernière sauvegarde '+formatDate(answersUpdatedAt) : ' · pas encore enregistré')+'</span>'+
+            '<div class="savebar-actions">'+
+              '<button class="btn ghost" id="reset-btn" type="button">Réinitialiser</button>'+
+              '<button class="btn" id="copy-btn" type="button">Copier mes réponses</button>'+
+              '<button class="btn primary" id="save-btn" type="button">Enregistrer mes réponses</button>'+
+            '</div>'+
+          '</div>'+
+          '<p class="footnote">Tes réponses sont enregistrées sur ton compte et visibles par les autres participant(e)s connecté(e)s du Groupe. Guide original : BNI Mentorat.</p>'+
+        '</div>'+
+      '</div>';
+  }
+
+  function renderResultatsPage(){
+    if(!resultsCache || resultsCache.loading){
+      return renderHeader() + '<div class="card"><div class="empty-state"><div class="big">⏳</div><p>Chargement des réponses…</p></div></div>';
+    }
+    if(resultsCache.error){
+      return renderHeader() + '<div class="card"><div class="banner warn">Impossible de charger les résultats ('+esc(resultsCache.error)+').</div></div>';
+    }
+    var responses = resultsCache.rows;
+    var n = responses.length;
+    var avgPct = 0;
+    if(n){
+      var sum = 0;
+      responses.forEach(function(r){ var tp = totalProgress(r.answers); sum += tp.total ? tp.filled/tp.total : 0; });
+      avgPct = Math.round(100*sum/n);
+    }
+    var last = responses.reduce(function(acc,r){ return (!acc || r.updatedAt > acc) ? r.updatedAt : acc; }, null);
+    var lastStr = last ? formatDate(last) : "—";
+
+    var body;
+    if(!n){
+      body = '<div class="empty-state"><div class="big">🗂️</div><p>Aucune réponse enregistrée pour l’instant.<br>Les réponses apparaîtront ici dès qu’un premier participant aura cliqué sur « Enregistrer mes réponses ».</p></div>';
+    } else {
+      var rows = responses.slice().sort(function(a,b){ return (b.updatedAt||"").localeCompare(a.updatedAt||""); }).map(function(r){
+        var tp = totalProgress(r.answers);
+        var pct = tp.total ? Math.round(100*tp.filled/tp.total) : 0;
+        return '<tr>'+
+          '<td>'+esc(r.nom)+'</td>'+
+          '<td><span class="pill role-'+esc(r.role)+'">'+esc(r.role)+'</span></td>'+
+          '<td>'+esc(r.groupe||"—")+'</td>'+
+          '<td>'+formatDate(r.updatedAt)+(r.history && r.history.length ? ' <span class="pill">'+r.history.length+' version'+(r.history.length>1?"s":"")+'</span>' : '')+'</td>'+
+          '<td>'+pct+'%</td>'+
+          '<td><button class="btn ghost" data-expand="'+esc(r.id)+'" type="button">Détail</button></td>'+
+          '</tr>'+
+          '<tr class="detail-row" id="detail-'+esc(r.id)+'" hidden><td colspan="6">'+renderDetail(r)+'</td></tr>';
+      }).join("");
+
+      body = '<div class="table-wrap"><table class="results">'+
+        '<thead><tr><th>Nom</th><th>Rôle</th><th>Groupe</th><th>Mis à jour</th><th>Complété</th><th></th></tr></thead>'+
+        '<tbody>'+rows+'</tbody></table></div>';
+    }
+
+    return renderHeader() +
+      '<div class="stat-row">'+
+        '<div class="stat-tile"><div class="num">'+n+'</div><div class="lbl">Participant(e)s</div></div>'+
+        '<div class="stat-tile"><div class="num">'+avgPct+'%</div><div class="lbl">Complétion moyenne</div></div>'+
+        '<div class="stat-tile"><div class="num" style="font-size:20px">'+esc(lastStr)+'</div><div class="lbl">Dernière réponse</div></div>'+
+      '</div>'+
+      '<div class="card">'+
+        '<div class="chapter-head" style="justify-content:space-between; width:100%"><h2 style="font-size:19px">Réponses du Groupe</h2>'+
+        '<button class="btn" id="export-btn" type="button">Exporter en CSV</button></div>'+
+        body+
+      '</div>'+
+      '<p class="footnote">Visible par toute personne connectée à un compte du Groupe — pense-y avant d’y partager des chiffres sensibles.</p>';
+  }
+
+  function renderAnswersGrid(a){
+    return '<div class="detail-grid">' + CHAPTERS.map(function(c){
+      var lines = chapterSummaryLines(c.key, a);
+      return '<div class="detail-block"><h4>'+c.num+'. '+esc(c.title)+'</h4><dl>'+
+        lines.map(function(l){ return '<dd>'+esc(l.replace(/^- /,""))+'</dd>'; }).join("")+
+        '</dl></div>';
+    }).join("") + '</div>';
+  }
+
+  function renderDetail(r){
+    var current = renderAnswersGrid(r.answers);
+    var histHtml = "";
+    if(r.history && r.history.length){
+      var items = r.history.slice().reverse().map(function(h){
+        var tp = totalProgress(h.answers);
+        return '<details class="tip"><summary>'+formatDate(h.updatedAt)+' — '+tp.filled+'/'+tp.total+' champs remplis à ce moment-là</summary>'+renderAnswersGrid(h.answers)+'</details>';
+      }).join("");
+      histHtml = '<div style="margin-top:22px"><span class="field-label" style="display:block; margin-bottom:10px">Historique — '+r.history.length+' version'+(r.history.length>1?"s":"")+' précédente'+(r.history.length>1?"s":"")+'</span>'+items+'</div>';
+    }
+    return current + histHtml;
+  }
+
+  function formatDate(iso){
+    if(!iso) return "—";
+    try {
+      var d = new Date(iso);
+      return d.toLocaleDateString("fr-FR", {day:"2-digit", month:"short"}) + " " + d.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"});
+    } catch(e){ return iso; }
+  }
+
+  /* ============ event binding ============ */
+  function bindRepondreEvents(){
+    var logoutBtn = document.getElementById("logout-btn");
+    if(logoutBtn) logoutBtn.addEventListener("click", handleLogout);
+
+    appEl.querySelectorAll("[data-tab]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var tab = btn.getAttribute("data-tab");
+        if(tab === "resultats"){ showResultsTab(); } else { view.tab = tab; saveView(); renderApp(); }
+      });
+    });
+    appEl.querySelectorAll("[data-step]").forEach(function(btn){
+      btn.addEventListener("click", function(){ view.chapter = btn.getAttribute("data-step"); saveView(); renderApp(); });
+    });
+    appEl.querySelectorAll("[data-nav]").forEach(function(btn){
+      btn.addEventListener("click", function(){ view.chapter = btn.getAttribute("data-nav"); saveView(); renderApp(); window.scrollTo({top:0, behavior:"smooth"}); });
+    });
+
+    var form = document.getElementById("chapter-form");
+    if(form){
+      form.addEventListener("input", function(e){
+        var t = e.target;
+        var path = t.getAttribute("data-path");
+        if(!path) return;
+        var chap = CHAPTERS.filter(function(c){ return c.key===view.chapter; })[0];
+        var full = chap.key + "." + path;
+        var val = (t.getAttribute("data-kind")==="bool" || t.type==="checkbox") ? t.checked : t.value;
+        setPath(answers, full, val);
+        updateStatusLine();
+        updateRailProgress();
+      });
+      form.addEventListener("change", function(e){
+        var t = e.target;
+        if(t.tagName === "SELECT"){
+          var path = t.getAttribute("data-path");
+          if(!path) return;
+          var chap = CHAPTERS.filter(function(c){ return c.key===view.chapter; })[0];
+          setPath(answers, chap.key+"."+path, t.value);
+        }
+      });
+    }
+
+    ["nom","role","groupe"].forEach(function(k){
+      var el = document.querySelector('[data-identity="'+k+'"]');
+      if(!el) return;
+      var evt = el.tagName === "SELECT" ? "change" : "input";
+      el.addEventListener(evt, function(){ profile[k] = el.value; });
+    });
+
+    var resetBtn = document.getElementById("reset-btn");
+    if(resetBtn){
+      var armed = false, armTimer = null;
+      resetBtn.addEventListener("click", function(){
+        if(!armed){
+          armed = true;
+          resetBtn.textContent = "Confirmer la réinitialisation ?";
+          armTimer = setTimeout(function(){ armed=false; resetBtn.textContent="Réinitialiser"; }, 4000);
+        } else {
+          clearTimeout(armTimer);
+          resetAnswers();
+        }
+      });
+    }
+    var copyBtn = document.getElementById("copy-btn");
+    if(copyBtn) copyBtn.addEventListener("click", copySummary);
+    var saveBtn = document.getElementById("save-btn");
+    if(saveBtn) saveBtn.addEventListener("click", handleSave);
+  }
+
+  function updateStatusLine(){
+    var el = document.getElementById("status-line");
+    if(!el) return;
+    var tp = totalProgress(answers);
+    el.innerHTML = '<span class="dot '+(tp.total&&tp.filled===tp.total?"ok":"")+'"></span>'+tp.filled+' / '+tp.total+' champs clés remplis'+(answersUpdatedAt ? ' · dernière sauvegarde '+formatDate(answersUpdatedAt) : ' · pas encore enregistré');
+  }
+  function updateRailProgress(){
+    CHAPTERS.forEach(function(c){
+      var btn = appEl.querySelector('[data-step="'+c.key+'"]');
+      if(!btn) return;
+      var p = chapterProgress(c.key, answers);
+      var pct = p.total ? Math.round(100*p.filled/p.total) : 0;
+      var bar = btn.querySelector(".step-bar > span");
+      if(bar) bar.style.width = pct+"%";
+      var num = btn.querySelector(".step-num");
+      var done = p.total && p.filled===p.total;
+      if(num){ num.classList.toggle("done", !!done); num.textContent = done ? "✓" : c.num; }
+    });
+  }
+
+  function bindResultsEvents(){
+    var logoutBtn = document.getElementById("logout-btn");
+    if(logoutBtn) logoutBtn.addEventListener("click", handleLogout);
+    appEl.querySelectorAll("[data-tab]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var tab = btn.getAttribute("data-tab");
+        if(tab === "resultats"){ showResultsTab(); } else { view.tab = tab; saveView(); renderApp(); }
+      });
+    });
+    appEl.querySelectorAll("[data-expand]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.getAttribute("data-expand");
+        var row = document.getElementById("detail-"+id);
+        if(row){ row.hidden = !row.hidden; btn.textContent = row.hidden ? "Détail" : "Masquer"; }
+      });
+    });
+    var exportBtn = document.getElementById("export-btn");
+    if(exportBtn) exportBtn.addEventListener("click", downloadCSV);
+  }
+
+  /* ============ boot ============ */
+  async function boot(){
+    appEl.innerHTML = '<div class="gate-wrap"><div class="gate-card" style="text-align:center"><div class="big" style="font-size:34px">⏳</div><p class="chapter-intro" style="margin-top:10px">Chargement…</p></div></div>';
+    var sres = await sb.auth.getSession();
+    session = sres.data.session;
+    sb.auth.onAuthStateChange(function(event, sess){
+      var wasSignedIn = !!session;
+      session = sess;
+      if(event === "SIGNED_OUT"){ profile = null; answers = emptyAnswers(); answersUpdatedAt = null; renderApp(); return; }
+      if(event === "SIGNED_IN" && !wasSignedIn){ loadUserData().then(renderApp); }
+    });
+    if(session){ await loadUserData(); }
+    renderApp();
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
