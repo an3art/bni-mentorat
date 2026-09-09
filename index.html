@@ -784,6 +784,7 @@
   }
 
   async function handleLogout(){
+    await flushPendingSave();
     await sb.auth.signOut();
   }
 
@@ -798,40 +799,64 @@
     answersUpdatedAt = ansRes.data ? ansRes.data.updated_at : null;
   }
 
-  function validateIdentity(){
-    return profile.nom && profile.nom.trim().length >= 2;
+  /* ============ autosave ============ */
+  var saveTimer = null;
+  var isDirty = false;
+  var isSaving = false;
+  var lastSaveError = null;
+
+  function scheduleAutoSave(){
+    isDirty = true;
+    lastSaveError = null;
+    updateStatusLine();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){ doSave(); }, 1200);
   }
 
-  async function handleSave(){
-    if(!validateIdentity()){
-      toast("Indique ton nom avant d'enregistrer.");
-      var nomInput = document.querySelector('[data-identity="nom"]');
-      if(nomInput) nomInput.focus();
-      return;
-    }
-    var saveBtn = document.getElementById("save-btn");
-    if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = "Enregistrement…"; }
+  async function flushPendingSave(){
+    if(saveTimer){ clearTimeout(saveTimer); saveTimer = null; }
+    if(isDirty) await doSave();
+  }
+
+  async function doSave(){
+    if(!session || isSaving) return;
+    if(saveTimer){ clearTimeout(saveTimer); saveTimer = null; }
+    isSaving = true;
+    updateStatusLine();
     try {
       var uid = session.user.id;
       var nowIso = new Date().toISOString();
-      var r1 = await sb.from("profiles").upsert({ id: uid, nom: profile.nom.trim(), role: profile.role, groupe: (profile.groupe||"").trim(), updated_at: nowIso });
+      var r1 = await sb.from("profiles").upsert({ id: uid, nom: (profile.nom||"").trim(), role: profile.role, groupe: (profile.groupe||"").trim(), updated_at: nowIso });
       if(r1.error) throw r1.error;
       var r2 = await sb.from("mentee_answers").upsert({ user_id: uid, answers: answers, updated_at: nowIso });
       if(r2.error) throw r2.error;
       answersUpdatedAt = nowIso;
-      toast("Réponses enregistrées.");
+      isDirty = false;
+      lastSaveError = null;
     } catch(err){
-      toast("Échec de l'enregistrement (" + (err && err.message ? err.message : "erreur") + "). Réessaie.");
+      lastSaveError = (err && err.message) || "erreur inconnue";
+      toast("Échec de l'enregistrement (" + lastSaveError + ") — nouvel essai à la prochaine modification.");
     } finally {
-      if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = "Enregistrer mes réponses"; }
+      isSaving = false;
       updateStatusLine();
     }
+  }
+
+  function statusLineInner(){
+    var tp = totalProgress(answers);
+    var dotClass, msg;
+    if(isSaving){ dotClass = "warn"; msg = "enregistrement en cours…"; }
+    else if(isDirty){ dotClass = "warn"; msg = "modifications en attente d'enregistrement…"; }
+    else if(lastSaveError){ dotClass = "warn"; msg = "échec de l'enregistrement — modifie un champ pour réessayer"; }
+    else { dotClass = answersUpdatedAt ? "ok" : ""; msg = answersUpdatedAt ? "enregistré automatiquement · dernière sauvegarde "+formatDate(answersUpdatedAt) : "enregistrement automatique activé"; }
+    return '<span class="dot '+dotClass+'"></span>'+tp.filled+' / '+tp.total+' champs clés remplis · '+msg;
   }
 
   function resetAnswers(){
     answers = emptyAnswers();
     renderApp();
-    toast("Formulaire réinitialisé — pense à cliquer sur « Enregistrer » si tu veux valider ce changement.");
+    scheduleAutoSave();
+    toast("Formulaire réinitialisé.");
   }
 
   async function fetchResults(){
@@ -890,7 +915,6 @@
 
   function renderRepondrePage(){
     var chap = CHAPTERS.filter(function(c){ return c.key===view.chapter; })[0] || CHAPTERS[0];
-    var tp = totalProgress(answers);
     var idx = CHAPTERS.indexOf(chap);
     var prev = CHAPTERS[idx-1], next = CHAPTERS[idx+1];
 
@@ -928,14 +952,13 @@
             '</div>'+
           '</div>'+
           '<div class="savebar">'+
-            '<span class="status-line" id="status-line"><span class="dot '+(tp.total&&tp.filled===tp.total?"ok":"")+'"></span>'+tp.filled+' / '+tp.total+' champs clés remplis'+(answersUpdatedAt ? ' · dernière sauvegarde '+formatDate(answersUpdatedAt) : ' · pas encore enregistré')+'</span>'+
+            '<span class="status-line" id="status-line">'+statusLineInner()+'</span>'+
             '<div class="savebar-actions">'+
               '<button class="btn ghost" id="reset-btn" type="button">Réinitialiser</button>'+
               '<button class="btn" id="copy-btn" type="button">Copier mes réponses</button>'+
-              '<button class="btn primary" id="save-btn" type="button">Enregistrer mes réponses</button>'+
             '</div>'+
           '</div>'+
-          '<p class="footnote">Tes réponses sont enregistrées sur ton compte et visibles par les autres participant(e)s connecté(e)s du Groupe. Guide original : BNI Mentorat.</p>'+
+          '<p class="footnote">Tes réponses s’enregistrent automatiquement sur ton compte au fil de la saisie, et sont visibles par les autres participant(e)s connecté(e)s du Groupe. Guide original : BNI Mentorat.</p>'+
         '</div>'+
       '</div>';
   }
@@ -960,7 +983,7 @@
 
     var body;
     if(!n){
-      body = '<div class="empty-state"><div class="big">🗂️</div><p>Aucune réponse enregistrée pour l’instant.<br>Les réponses apparaîtront ici dès qu’un premier participant aura cliqué sur « Enregistrer mes réponses ».</p></div>';
+      body = '<div class="empty-state"><div class="big">🗂️</div><p>Aucune réponse enregistrée pour l’instant.<br>Les réponses apparaîtront ici dès qu’un premier participant aura commencé à remplir un chapitre (enregistrement automatique).</p></div>';
     } else {
       var rows = responses.slice().sort(function(a,b){ return (b.updatedAt||"").localeCompare(a.updatedAt||""); }).map(function(r){
         var tp = totalProgress(r.answers);
@@ -1031,16 +1054,25 @@
     if(logoutBtn) logoutBtn.addEventListener("click", handleLogout);
 
     appEl.querySelectorAll("[data-tab]").forEach(function(btn){
-      btn.addEventListener("click", function(){
+      btn.addEventListener("click", async function(){
         var tab = btn.getAttribute("data-tab");
+        await flushPendingSave();
         if(tab === "resultats"){ showResultsTab(); } else { view.tab = tab; saveView(); renderApp(); }
       });
     });
     appEl.querySelectorAll("[data-step]").forEach(function(btn){
-      btn.addEventListener("click", function(){ view.chapter = btn.getAttribute("data-step"); saveView(); renderApp(); });
+      btn.addEventListener("click", async function(){
+        var next = btn.getAttribute("data-step");
+        await flushPendingSave();
+        view.chapter = next; saveView(); renderApp();
+      });
     });
     appEl.querySelectorAll("[data-nav]").forEach(function(btn){
-      btn.addEventListener("click", function(){ view.chapter = btn.getAttribute("data-nav"); saveView(); renderApp(); window.scrollTo({top:0, behavior:"smooth"}); });
+      btn.addEventListener("click", async function(){
+        var next = btn.getAttribute("data-nav");
+        await flushPendingSave();
+        view.chapter = next; saveView(); renderApp(); window.scrollTo({top:0, behavior:"smooth"});
+      });
     });
 
     var form = document.getElementById("chapter-form");
@@ -1053,8 +1085,8 @@
         var full = chap.key + "." + path;
         var val = (t.getAttribute("data-kind")==="bool" || t.type==="checkbox") ? t.checked : t.value;
         setPath(answers, full, val);
-        updateStatusLine();
         updateRailProgress();
+        scheduleAutoSave();
       });
       form.addEventListener("change", function(e){
         var t = e.target;
@@ -1063,6 +1095,7 @@
           if(!path) return;
           var chap = CHAPTERS.filter(function(c){ return c.key===view.chapter; })[0];
           setPath(answers, chap.key+"."+path, t.value);
+          scheduleAutoSave();
         }
       });
     }
@@ -1071,7 +1104,7 @@
       var el = document.querySelector('[data-identity="'+k+'"]');
       if(!el) return;
       var evt = el.tagName === "SELECT" ? "change" : "input";
-      el.addEventListener(evt, function(){ profile[k] = el.value; });
+      el.addEventListener(evt, function(){ profile[k] = el.value; scheduleAutoSave(); });
     });
 
     var resetBtn = document.getElementById("reset-btn");
@@ -1090,15 +1123,12 @@
     }
     var copyBtn = document.getElementById("copy-btn");
     if(copyBtn) copyBtn.addEventListener("click", copySummary);
-    var saveBtn = document.getElementById("save-btn");
-    if(saveBtn) saveBtn.addEventListener("click", handleSave);
   }
 
   function updateStatusLine(){
     var el = document.getElementById("status-line");
     if(!el) return;
-    var tp = totalProgress(answers);
-    el.innerHTML = '<span class="dot '+(tp.total&&tp.filled===tp.total?"ok":"")+'"></span>'+tp.filled+' / '+tp.total+' champs clés remplis'+(answersUpdatedAt ? ' · dernière sauvegarde '+formatDate(answersUpdatedAt) : ' · pas encore enregistré');
+    el.innerHTML = statusLineInner();
   }
   function updateRailProgress(){
     CHAPTERS.forEach(function(c){
@@ -1148,6 +1178,9 @@
     if(session){ await loadUserData(); }
     renderApp();
   }
+  window.addEventListener("beforeunload", function(){
+    if(isDirty && !isSaving) doSave();
+  });
   boot();
 })();
 </script>
