@@ -83,6 +83,21 @@
   .layout{ display:grid; grid-template-columns:264px 1fr; gap:24px; align-items:start; }
   @media (max-width: 860px){ .layout{ grid-template-columns:1fr; } }
 
+  .pdf-panel{
+    grid-column: 1 / -1;
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:16px;
+    padding:14px; box-shadow:var(--shadow);
+  }
+  .pdf-panel-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:2px 6px 12px; }
+  .pdf-panel-link{ font-size:12.5px; font-weight:600; color:var(--accent-strong); text-decoration:none; white-space:nowrap; }
+  .pdf-panel-scroll{ display:flex; flex-direction:column; gap:10px; }
+  .pdf-page-link{ display:block; border-radius:8px; overflow:hidden; border:1px solid var(--line); }
+  .pdf-page{ display:block; width:100%; height:auto; }
+  @media (min-width:1300px){
+    .layout.has-pdf{ grid-template-columns:264px minmax(420px,1.3fr) minmax(300px,1fr); }
+    .layout.has-pdf .pdf-panel{ grid-column:3; grid-row:1; position:sticky; top:16px; max-height:calc(100vh - 32px); overflow-y:auto; }
+  }
+
   .rail{
     display:flex; flex-direction:column; gap:2px;
     background:var(--paper-raised); border:1px solid var(--line); border-radius:16px; padding:8px;
@@ -167,7 +182,7 @@
 
   /* ---------- identity card ---------- */
   .identity{
-    display:grid; grid-template-columns:2fr 1fr 1.4fr; gap:14px; margin-bottom:20px;
+    display:grid; grid-template-columns:minmax(140px,2fr) minmax(112px,1fr) minmax(140px,1.4fr); gap:14px; margin-bottom:20px;
     background:var(--accent-soft); border:1px solid var(--line); border-radius:16px; padding:16px 18px;
   }
   @media (max-width:700px){ .identity{ grid-template-columns:1fr; } }
@@ -932,7 +947,7 @@
     var tipsList = chap.tips.map(function(t){ return "<li>"+esc(t)+"</li>"; }).join("");
 
     return renderHeader() +
-      '<div class="layout">'+
+      '<div class="layout has-pdf">'+
         '<nav class="rail" aria-label="Chapitres">'+rail+'</nav>'+
         '<div>'+
           '<div class="card">'+
@@ -961,7 +976,29 @@
           '</div>'+
           '<p class="footnote">Tes réponses s’enregistrent automatiquement sur ton compte au fil de la saisie, et sont visibles par les autres participant(e)s connecté(e)s du Groupe. Guide original : BNI Mentorat.</p>'+
         '</div>'+
+        renderPdfPanel(chap.key)+
       '</div>';
+  }
+
+  var CHAPTER_PAGES = {
+    bienvenue: [4,7], fonctionnement: [8,15], strategie: [16,19], attitude: [20,24],
+    conference: [25,33], infomerciales: [34,39], teteatete: [40,44],
+    recommandations: [45,50], invitations: [51,54], bilan: [55,57]
+  };
+  function renderPdfPanel(chapKey){
+    var range = CHAPTER_PAGES[chapKey];
+    if(!range) return '';
+    var imgs = '';
+    for(var p=range[0]; p<=range[1]; p++){
+      var num = (p<10?'0':'')+p;
+      imgs += '<a class="pdf-page-link" href="assets/pages/page-'+num+'.jpg" target="_blank" rel="noopener" title="Ouvrir la page '+p+' en grand">'+
+        '<img class="pdf-page" src="assets/pages/page-'+num+'.jpg" alt="Page '+p+' du guide BNI Mentorat" loading="lazy"></a>';
+    }
+    return '<aside class="pdf-panel">'+
+      '<div class="pdf-panel-head"><span class="field-label">Pages '+range[0]+(range[1]>range[0]?'–'+range[1]:'')+' du guide</span>'+
+      '<a href="assets/guide-mentorat-bni.pdf" target="_blank" rel="noopener" class="pdf-panel-link">PDF complet ↗</a></div>'+
+      '<div class="pdf-panel-scroll">'+imgs+'</div>'+
+    '</aside>';
   }
 
   function renderResultatsPage(){
