@@ -900,7 +900,12 @@
     });
   }
 
+  function isMentor(){
+    return !!(profile && profile.role === "Mentor");
+  }
+
   async function showResultsTab(){
+    if(!isMentor()) return;
     view.tab = "resultats"; saveView();
     resultsCache = { loading:true, rows:[] };
     renderApp();
@@ -916,6 +921,7 @@
   /* ============ app rendering ============ */
   function renderApp(){
     if(!session){ appEl.innerHTML = renderAuthPage(); bindAuthEvents(); return; }
+    if(view.tab === "resultats" && !isMentor()){ view.tab = "repondre"; saveView(); }
     if(view.tab === "resultats"){ appEl.innerHTML = renderResultatsPage(); bindResultsEvents(); }
     else { appEl.innerHTML = renderRepondrePage(); bindRepondreEvents(); }
   }
@@ -928,7 +934,7 @@
       '<div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">'+
       '<div class="tabs" role="tablist">'+
         '<button role="tab" aria-selected="'+(view.tab==="repondre")+'" data-tab="repondre">Répondre</button>'+
-        '<button role="tab" aria-selected="'+(view.tab==="resultats")+'" data-tab="resultats">Résultats</button>'+
+        (isMentor() ? '<button role="tab" aria-selected="'+(view.tab==="resultats")+'" data-tab="resultats">Résultats</button>' : '')+
       '</div>'+
       '<div class="account-chip"><strong>'+esc(email)+'</strong>'+
       '<button class="btn ghost icon-btn" id="logout-btn" type="button" title="Se déconnecter" aria-label="Se déconnecter">'+
@@ -986,7 +992,7 @@
               '<button class="btn" id="copy-btn" type="button">Copier mes réponses</button>'+
             '</div>'+
           '</div>'+
-          '<p class="footnote">Tes réponses s’enregistrent automatiquement sur ton compte au fil de la saisie, et sont visibles par les autres participant(e)s connecté(e)s du Groupe. Guide original : BNI Mentorat.</p>'+
+          '<p class="footnote">Tes réponses s’enregistrent automatiquement sur ton compte au fil de la saisie, et sont visibles par les Mentors du Groupe. Guide original : BNI Mentorat.</p>'+
         '</div>'+
         renderPdfPanel(chap.key)+
       '</div>';
@@ -1067,7 +1073,7 @@
         '<button class="btn" id="export-btn" type="button">Exporter en CSV</button></div>'+
         body+
       '</div>'+
-      '<p class="footnote">Visible par toute personne connectée à un compte du Groupe — pense-y avant d’y partager des chiffres sensibles.</p>';
+      '<p class="footnote">Réservé aux comptes ayant le rôle Mentor — pense-y avant d’y partager des chiffres sensibles.</p>';
   }
 
   function renderAnswersGrid(a){
